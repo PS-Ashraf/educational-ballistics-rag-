@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+pydantic
+python-dotenv
+chromadb
+sentence-transformers
+pypdf
+python-multipart
+requests
+mcp==1.2.1
