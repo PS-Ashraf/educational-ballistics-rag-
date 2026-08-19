@@ -68,3 +68,15 @@ def get_source_metadata(source_id: str) -> str:
 
 if __name__ == "__main__":
     mcp.run()
+
+
+
+#[ AI Client ]  ---> Sends JSON-RPC: call "search_knowledge_base(query='bullet drag')"
+      
+#[ MCP Server ] ---> Runs search_knowledge_base() -> Calls retrieve_context()
+      
+#[ ChromaDB ]   ---> Searches vector store and returns matching document chunks
+      
+#[ MCP Server ] ---> Formats text and responds to AI
+      
+#[ AI Client ]  ---> Reads ground-truth document chunks and answers user

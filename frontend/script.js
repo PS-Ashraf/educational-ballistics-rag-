@@ -1,4 +1,4 @@
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = window.location.origin.startsWith('http') ? `${window.location.origin}/api` : 'http://127.0.0.1:8000/api';
 
 // DOM Elements
 const statusOllama = document.getElementById('status-ollama');

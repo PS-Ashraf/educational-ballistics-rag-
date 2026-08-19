@@ -2,37 +2,36 @@ import os
 import re
 import json
 import math
-from pypdf import PdfReader
+import pymupdf as fitz # PyMuPDF
 from backend.config import settings
 from backend.rag.embeddings import get_embedding_function
 
-DB_FILE = os.path.join(settings.VECTOR_DB_DIR, "vector_kb.json")
+import chromadb
 
-def _load_db() -> list[dict]:
-    if not os.path.exists(DB_FILE):
-        return []
-    try:
-        with open(DB_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return []
+_chroma_client = None
 
-def _save_db(data: list[dict]):
-    os.makedirs(settings.VECTOR_DB_DIR, exist_ok=True)
-    with open(DB_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+def get_kb_collection():
+    global _chroma_client
+    if _chroma_client is None:
+        _chroma_client = chromadb.PersistentClient(path=settings.VECTOR_DB_DIR)
+        
+    return _chroma_client.get_or_create_collection(
+        name="ballistics_knowledge_base",
+        embedding_function=get_embedding_function()
+    )
 
 def extract_text_from_pdf(file_path: str) -> str:
     text = ""
     try:
-        reader = PdfReader(file_path, strict=False)
-        for page in reader.pages:
+        doc = fitz.open(file_path)
+        for page in doc:
             try:
-                page_text = page.extract_text()
+                page_text = page.get_text("text")
                 if page_text:
-                    text += page_text + "\n"
+                    text += str(page_text) + "\n"
             except Exception:
                 continue
+        doc.close()
     except Exception as e:
         print(f"[PDF Extract Notice] Error reading {file_path}: {e}")
     return text
@@ -120,25 +119,26 @@ def ingest_document(file_path: str) -> dict:
     emb_fn = get_embedding_function()
     embeddings = emb_fn(chunks)
 
-    db = _load_db()
+    collection = get_kb_collection()
+    
     # Remove existing chunks of same file
-    db = [item for item in db if item.get("metadata", {}).get("source") != filename]
+    try:
+        collection.delete(where={"source": filename})
+    except Exception:
+        pass
 
-    for idx, (chunk, emb) in enumerate(zip(chunks, embeddings)):
-        # Ensure embedding is a list of plain python floats
-        float_emb = [float(x) for x in emb]
-        db.append({
-            "id": f"{filename}_{idx}",
-            "content": chunk,
-            "embedding": float_emb,
-            "metadata": {
-                "source": filename,
-                "chunk_index": idx,
-                "path": file_path
-            }
-        })
+    # Ensure embedding is a list of plain python floats
+    float_embs = [[float(x) for x in emb] for emb in embeddings]
+    
+    ids = [f"{filename}_{idx}" for idx in range(len(chunks))]
+    metadatas = [{"source": filename, "chunk_index": idx, "path": file_path} for idx in range(len(chunks))]
 
-    _save_db(db)
+    collection.add(
+        ids=ids,
+        documents=chunks,
+        embeddings=float_embs, # type: ignore
+        metadatas=metadatas  # type: ignore
+    )
         
     return {
         "status": "success",
@@ -146,7 +146,7 @@ def ingest_document(file_path: str) -> dict:
         "filename": filename
     }
 
-def sync_knowledge_base(target_dir: str = None, force_reingest: bool = False) -> dict:
+def sync_knowledge_base(target_dir: str | None = None, force_reingest: bool = False) -> dict:
     """
     Scans the knowledge base directory for supported files (.pdf, .txt, .md).
     Automatically ingests any new/unindexed documents into the vector store.
@@ -158,8 +158,12 @@ def sync_knowledge_base(target_dir: str = None, force_reingest: bool = False) ->
         os.makedirs(target_dir, exist_ok=True)
 
     valid_exts = ('.pdf', '.txt', '.md', '.markdown')
-    db = _load_db()
-    indexed_files = {item.get("metadata", {}).get("source") for item in db if item.get("metadata")}
+    collection = get_kb_collection()
+    res = collection.get(include=["metadatas"])
+    indexed_files = set()
+    for meta in (res.get("metadatas") or []):
+        if meta and "source" in meta:
+            indexed_files.add(meta["source"])
 
     files_found = []
     # Search target_dir and parent knowledge_base dir if different
@@ -208,40 +212,51 @@ def sync_knowledge_base(target_dir: str = None, force_reingest: bool = False) ->
 
 
 def list_documents() -> list[dict]:
-    db = _load_db()
-    seen = {}
-    for item in db:
-        meta = item.get("metadata", {})
-        src = meta.get("source")
-        if src and src not in seen:
-            seen[src] = {
-                "filename": src,
-                "path": meta.get("path"),
-                "chunks": 1
-            }
-        elif src:
-            seen[src]["chunks"] += 1
-            
+    collection = get_kb_collection()
+    res = collection.get(include=["metadatas"])
+    seen: dict[str, dict] = {}
+    for meta in (res.get("metadatas") or []):
+        if meta:
+            src = meta.get("source")
+            if isinstance(src, str):
+                if src not in seen:
+                    seen[src] = {
+                        "filename": src,
+                        "path": meta.get("path"),
+                        "chunks": 1
+                    }
+                else:
+                    seen[src]["chunks"] += 1
+                
     return list(seen.values())
 
 def get_document_chunks(filename: str) -> list[dict]:
-    db = _load_db()
+    collection = get_kb_collection()
+    res = collection.get(where={"source": filename}, include=["metadatas", "documents"])
     chunks = []
-    for item in db:
-        if item.get("metadata", {}).get("source") == filename:
+    
+    if res and res.get("ids"):
+        for i in range(len(res["ids"])):
+            meta = res["metadatas"][i] if res.get("metadatas") else {}
+            doc = res["documents"][i] if res.get("documents") else ""
             chunks.append({
-                "id": item.get("id"),
-                "content": item.get("content"),
-                "chunk_index": item.get("metadata", {}).get("chunk_index", 0)
+                "id": res["ids"][i],
+                "content": doc,
+                "chunk_index": meta.get("chunk_index", 0)
             })
+            
     chunks.sort(key=lambda x: x.get("chunk_index", 0))
     return chunks
 
 def delete_document(filename: str) -> dict:
-    db = _load_db()
-    initial_count = len(db)
-    db = [item for item in db if item.get("metadata", {}).get("source") != filename]
-    _save_db(db)
+    collection = get_kb_collection()
+    initial_count = collection.count()
+    try:
+        collection.delete(where={"source": filename})
+    except Exception:
+        pass
+        
+    removed_chunks = initial_count - collection.count()
     
     file_path = os.path.join(settings.UPLOAD_DIR, filename)
     if os.path.exists(file_path):
@@ -250,46 +265,10 @@ def delete_document(filename: str) -> dict:
         except Exception:
             pass
             
-    removed_chunks = initial_count - len(db)
     return {
         "status": "success",
         "removed_chunks": removed_chunks,
         "filename": filename
     }
 
-class MockCollection:
-    name: str = "ballistics_knowledge_base"
-
-    def count(self) -> int:
-        return len(_load_db())
-
-    def get(self, limit: int | None = None, where: dict | None = None) -> dict:
-        db = _load_db()
-        if where and "source" in where:
-            target_src = where["source"]
-            db = [item for item in db if item.get("metadata", {}).get("source") == target_src]
-
-        if limit is not None:
-            db = db[:limit]
-
-        ids = [item["id"] for item in db]
-        documents = [item["content"] for item in db]
-        metadatas = [item.get("metadata", {}) for item in db]
-        return {"ids": ids, "documents": documents, "metadatas": metadatas}
-
-    def delete(self, ids: list[str] | None = None, where: dict | None = None) -> int:
-        db = _load_db()
-        initial_len = len(db)
-        if ids:
-            ids_set = set(ids)
-            db = [item for item in db if item["id"] not in ids_set]
-        elif where and "source" in where:
-            target_src = where["source"]
-            db = [item for item in db if item.get("metadata", {}).get("source") != target_src]
-
-        _save_db(db)
-        return initial_len - len(db)
-
-def get_kb_collection():
-    return MockCollection()
-
+# get_kb_collection moved to the top of the file

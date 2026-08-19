@@ -38,8 +38,10 @@ def main():
                 print("\n[!] The database is currently empty.")
             else:
                 data = collection.get(limit=5)
+                documents = data.get('documents') or []
+                metadatas = data.get('metadatas') or []
                 print(f"\n--- Database Preview (Showing top {len(data['ids'])} of {count} entries) ---")
-                for idx, (doc_id, doc_text, meta) in enumerate(zip(data['ids'], data['documents'], data['metadatas']), 1):
+                for idx, (doc_id, doc_text, meta) in enumerate(zip(data['ids'], documents, metadatas), 1):
                     source = meta.get('source', 'Unknown') if meta else 'Unknown'
                     chunk_idx = meta.get('chunk_index', '?') if meta else '?'
                     preview = doc_text.replace('\n', ' ')[:100] + "..." if len(doc_text) > 100 else doc_text

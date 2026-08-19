@@ -9,7 +9,7 @@ if PROJECT_ROOT not in sys.path:
 from backend.config import settings
 from backend.rag.ingestion import ingest_document, sync_knowledge_base, get_kb_collection
 
-def run_ingestion(target_dir: str = None, force: bool = False):
+def run_ingestion(target_dir: str | None = None, force: bool = False):
     if target_dir is None:
         target_dir = settings.UPLOAD_DIR
 

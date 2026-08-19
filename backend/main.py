@@ -119,7 +119,7 @@ def chat_endpoint(payload: ChatRequest):
     
     if not context_chunks:
         return ChatResponse(
-            response="I do not have any data or documents in the knowledge base related to your question.",
+            response="I don't have any relevant answer for that.",
             safe=True,
             context=[],
             sources=[]
@@ -147,7 +147,12 @@ def chat_endpoint(payload: ChatRequest):
             json={
                 "model": settings.OLLAMA_MODEL,
                 "messages": messages,
-                "stream": False
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,
+                    "top_p": 0.9,
+                    "top_k": 40
+                }
             },
             timeout=60
         )
