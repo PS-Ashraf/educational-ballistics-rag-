@@ -1,9 +1,9 @@
 import math
 from typing import Any, Sequence
 from backend.rag.ingestion import get_kb_collection
-from backend.rag.embeddings import get_embedding_function
 
-def retrieve_context(query: str, top_k: int = 4, min_similarity: float = 0.1) -> list[dict]:
+
+def retrieve_context(query: str, top_k: int = 4, min_similarity: float = 0.5) -> list[dict]:
     """
     Computes vector similarity against stored document chunks and returns top_k matches.
     Only returns chunks with similarity above min_similarity.

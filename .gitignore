@@ -16,11 +16,21 @@ __pycache__/
 vector_store/
 *.sqlite3
 
+# Uploaded Documents
+knowledge_base/documents/
+!knowledge_base/documents/.gitkeep
+
+# Testing Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
 # IDEs and Editors
 .vscode/
 .idea/
 *.swp
 *.swo
+pyrefly.toml
 
 # MacOS
 .DS_Store

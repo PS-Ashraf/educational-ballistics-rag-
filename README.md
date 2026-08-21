@@ -24,7 +24,7 @@ This project is highly tuned for **educational safety and factual accuracy**. It
 ### 2. Retrieval Parameters
 * **Vector Store**: Local **ChromaDB** using **L2 (Euclidean) distance**.
 * **`top_k=4`**: Restricts the context window to only the 4 most relevant chunks.
-* **`min_similarity=0.1`**: A strict threshold. If no chunks pass this threshold, the bot refuses to answer rather than hallucinate.
+* **`min_similarity=0.5`**: A strict threshold. If no chunks pass this threshold, the bot refuses to answer rather than hallucinate.
 
 ### 3. LLM Generation
 * **`temperature=0.3`**: Keeps the AI focused, factual, and strictly grounded to the retrieved documents.
@@ -72,6 +72,12 @@ python -m http.server 3000 --directory frontend
 ```
 Then navigate to `http://localhost:3000`.
 
+### 7. Running Tests
+The project includes a suite of unit tests for the ingestion, retrieval, and safety modules using `pytest`. To run the tests:
+```bash
+pytest -v
+```
+
 ---
 
 ## Adding Documents to the Knowledge Base
@@ -112,11 +118,11 @@ If you need to explain this project's architecture to a mentor, professor, or pe
 
 ### 2. Vector Storage & Search
 **What it is:** How the system stores text as numbers (vectors) and searches through them.
-* **Our Setting:** `ChromaDB` using `L2 Distance` (Euclidean distance) with `top_k = 4` and `min_similarity = 0.1`.
+* **Our Setting:** `ChromaDB` using `L2 Distance` (Euclidean distance) with `top_k = 4` and `min_similarity = 0.5`.
 * **Why we used it:** 
   * **ChromaDB**: It runs 100% locally. No data is sent to external cloud servers, ensuring privacy, offline capability, and fast responses.
   * **`top_k = 4`**: We only pull the top 4 most relevant chunks. Any more than that, and we risk feeding the LLM useless "fluff" that could cause it to hallucinate.
-  * **`min_similarity = 0.1`**: This is a strict safety net. If the database can't find a chunk that scores at least 0.1 in similarity to the user's question, the system aborts the RAG process.
+  * **`min_similarity = 0.5`**: This is a strict safety net. If the database can't find a chunk that scores at least 0.5 in similarity to the user's question, the system aborts the RAG process.
 * **Why *only* this:** Safety and accuracy. If a user asks something outside the scope of the documents (or something dangerous), the system will confidently say "I don't have data on that" instead of guessing or providing unsafe DIY instructions.
 
 ### 3. The LLM Generation "Funnel"

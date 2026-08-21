@@ -2,12 +2,23 @@ import re
 
 # Simple pattern-based check for obviously dangerous/harmful weapon creation instructions
 UNSAFE_PATTERNS = [
-    r"how to (make|build|construct|manufacture|assemble) a (gun|firearm|pistol|rifle|bomb|silencer|suppressor|explosive|receiver|zip gun)",
-    r"3d print(ing)? a (receiver|frame|gun|firearm|lower|upper)",
-    r"convert.*to (full auto|fully automatic|machine gun)",
-    r"diy (gunpowder|explosive|thermite|ammunition|bullet)",
-    r"modifying a gun to",
-    r"homemade (silencer|muffler|baffle|firearm|weapon)"
+    # Requests to create or construct weapons
+    r"\b(how\s+(to|do\s+i)|can\s+i|help\s+me\s+to)?\s*(make|build|construct|manufacture|assemble|create)\s+(a\s+)?(homemade\s+|diy\s+)?(gun|firearm|pistol|rifle|zip\s+gun|bomb|silencer|suppressor|explosive|receiver)\b",
+
+    # Specific dangerous weapon-construction requests
+    r"\b(homemade|diy)\s+(zip\s+gun|silencer|muffler|baffle|firearm|weapon)\b",
+
+    # 3D-printed weapon components
+    r"\b3d\s*print(ing)?\s+(a\s+)?(receiver|frame|gun|firearm|lower|upper)\b",
+
+    # Automatic weapon conversion
+    r"\bconvert.*\b(to\s+)?(full\s+auto|fully\s+automatic|machine\s+gun)\b",
+
+    # Explosive or ammunition construction
+    r"\b(diy|homemade)\s+(gunpowder|explosive|thermite|ammunition|bullet)\b",
+
+    # Weapon modification requests
+    r"\bmodify(ing)?\s+(a\s+)?(gun|firearm|weapon)\s+to\b"
 ]
 
 def is_query_safe(query: str) -> bool:
@@ -44,7 +55,7 @@ Rules:
 2. **Grounded Answers**: Base your answers strictly on the retrieved context below. Do not make assumptions, invent citations, or hallucinate sources.
 3. **Missing Information**: If the retrieved context does not contain enough information to answer the question, you must reply EXACTLY with: "I don't have any relevant answer for that." Do not say anything else.
 4. **No Sources**: Do NOT mention the sources or references in your output. Just provide the answer directly based on the context.
-5. **Tone & Length**: Keep your answers EXTREMELY short, concise, and straight to the point. Do not write long paragraphs. A shorter answer is generated much faster, which is critical. Be objective, clear, simple, and educational.
+5. **Tone & Length**: Your answer MUST be extremely simple and properly formatted. Limit your response to 1 or 2 sentences maximum. Do not write a whole paragraph. Be objective, clear, and educational.
 
 Retrieved Context:
 ---
