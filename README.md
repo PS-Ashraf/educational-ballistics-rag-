@@ -11,7 +11,8 @@ User ➔ HTML/CSS/JS (Frontend) ➔ FastAPI (Backend) ➔ RAG Search (ChromaDB) 
 * **Frontend:** Modern ChatGPT-style dashboard built with semantic HTML5, custom CSS themes (Light/Dark mode), and Vanilla JavaScript.
 * **Backend:** Python + FastAPI exposing REST API endpoints for chatting, uploading documents, ingesting data, and tracking connection health.
 * **RAG & Vector Database:** Local vector database via ChromaDB, utilizing SentenceTransformers (`all-MiniLM-L6-v2`) for local chunk embedding.
-* **LLM Runtime:** Ollama running locally (defaults to `llama3`).
+* **LLM Runtime:** Ollama running locally (defaults to `llama3.2:3b`).
+* **Auto-Evaluation:** A self-correcting evaluation pipeline (`backend/evaluate_rag.py`) that uses an LLM judge to grade answers on Faithfulness and Relevancy.
 * **MCP (Model Context Protocol):** A standalone MCP server exposing safety tools for external LLM clients to browse the knowledge base.
 
 ## Core RAG Pipeline & Parameters
@@ -46,9 +47,9 @@ pip install -r requirements.txt
 ```
 
 ### 3. Setup Ollama Model
-Pull the configured model (default `llama3`):
+Pull the configured model (default `llama3.2:3b`):
 ```bash
-ollama pull llama3
+ollama pull llama3.2:3b
 ```
 
 ### 4. Running the Backend
@@ -138,6 +139,13 @@ If you need to explain this project's architecture to a mentor, professor, or pe
 **What it is:** How documents actually get into the database.
 * **Our Setting:** Having both an internal engine (`backend/rag/ingestion.py`) and external CLI scripts (`run_ingestion.py`, `manage_db.py`).
 * **Why we used it:**
-  * The internal engine allows the FastAPI web server to automatically ingest files when a user drags-and-drops them into the Web UI.
   * The CLI scripts allow you to bulk-process hundreds of PDFs offline without clicking through a UI, and gives you an admin console to wipe or fix the database if it gets corrupted.
 * **Why *only* this approach:** It separates the core math (chunking/embedding) from the user interface. This results in clean, reusable code that works perfectly both in a browser and in a server terminal.
+
+### 5. Auto-Evaluation (LLM-as-a-Judge)
+**What it is:** Every time the AI generates an answer, we ask a secondary prompt to "judge" that answer based on the original retrieved context.
+* **Our Setting:** Evaluates **Faithfulness** (Did the AI make anything up?) and **Relevancy** (Did the AI actually answer the question?), returning scores from 1 to 5.
+* **Why we used it:** 
+  * Traditional coding unit tests can't easily grade natural language. Using an "LLM as a judge" allows us to quantify the quality of the RAG system dynamically in real-time.
+  * These scores are fed back into the UI so the user knows exactly how confident they should be in the generated answer.
+* **Why *only* this approach:** It creates a transparent, self-correcting loop. If the model starts hallucinating, the `faithfulness` score drops, instantly alerting the user that the information is not grounded in the source documents.

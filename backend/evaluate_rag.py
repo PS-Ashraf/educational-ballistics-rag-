@@ -5,7 +5,6 @@ from typing import List, Dict, Any
 
 from backend.config import settings
 
-# Adjust these settings if your local app or Ollama runs on different ports
 API_BASE_URL = "http://127.0.0.1:8000/api"
 OLLAMA_HOST = settings.OLLAMA_HOST
 JUDGE_MODEL = settings.OLLAMA_MODEL
@@ -33,7 +32,7 @@ TEST_CASES = [
         "expected_topics": []
     }
 ]
-
+#using one LLM to evaluate another LLM's answer.
 def llm_judge(question: str, answer: str, context: str) -> Dict[str, Any]:
     """Uses Ollama to grade the answer on a scale of 1-5 for Faithfulness and Relevance."""
     prompt = f"""
@@ -58,7 +57,7 @@ def llm_judge(question: str, answer: str, context: str) -> Dict[str, Any]:
                 "model": JUDGE_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
-                "options": {"temperature": 0.1}
+                "options": {"temperature": 0.1}#A low temperature is used to make evaluation more consistent and less random.
             },
             timeout=30
         )

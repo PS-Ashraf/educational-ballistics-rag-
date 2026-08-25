@@ -1,3 +1,4 @@
+#test file automatically checks whether parts of your program behave correctly.
 from backend.rag.ingestion import clean_text, chunk_text
 
 #Cleaning extra spaces
@@ -8,7 +9,7 @@ def test_clean_text_removes_extra_spaces():
     assert "     " not in result
     assert result == "Hello world.\n\nThis is a test."
 
-
+#Chunking creates multiple chunks
 def test_chunk_text_creates_chunks():
     text = " ".join(
         [
@@ -16,7 +17,7 @@ def test_chunk_text_creates_chunks():
             for _ in range(30)
         ]
     )
-
+#Call our chunking algorithm
     chunks = chunk_text(text, chunk_size=350, chunk_overlap=50)
 
     assert len(chunks) > 1
@@ -28,7 +29,7 @@ def test_chunk_text_preserves_content():
         "Internal ballistics studies events inside a firearm. "
         "External ballistics studies projectile motion through the air."
     )
-
+#only used inside a test to make the test easier to verify
     chunks = chunk_text(text, chunk_size=80, chunk_overlap=30)
 
     combined = " ".join(chunks)

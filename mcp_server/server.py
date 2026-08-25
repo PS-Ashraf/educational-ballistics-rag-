@@ -16,7 +16,7 @@ def search_knowledge_base(query: str) -> str:
     Search the educational ballistics knowledge base for matches to a query.
     Returns matched paragraphs/chunks.
     """
-    results = retrieve_context(query, top_k=3)
+    results = retrieve_context(query, top_k=3)#provide a concise search result.
     if not results:
         return "No relevant information found in the knowledge base."
     
@@ -25,7 +25,7 @@ def search_knowledge_base(query: str) -> str:
         src = r["metadata"].get("source", "Unknown")
         out.append(f"[{src}]: {r['content']}")
     return "\n\n".join(out)
-
+#provides more structured context for an AI system.
 @mcp.tool()
 def retrieve_document_context(query: str, top_k: int = 4) -> str:
     """
@@ -54,7 +54,7 @@ def list_available_sources() -> str:
     for doc in docs:
         out.append(f"- {doc['filename']} ({doc['chunks']} chunks, located at: {doc['path']})")
     return "\n".join(out)
-
+#retrieves information about one specific document.
 @mcp.tool()
 def get_source_metadata(source_id: str) -> str:
     """
@@ -80,3 +80,4 @@ if __name__ == "__main__":
 #[ MCP Server ] ---> Formats text and responds to AI
       
 #[ AI Client ]  ---> Reads ground-truth document chunks and answers user
+    
