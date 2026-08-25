@@ -1,6 +1,6 @@
 from backend.rag.ingestion import clean_text, chunk_text
 
-
+#Cleaning extra spaces
 def test_clean_text_removes_extra_spaces():
     text = "Hello     world.\n\n\nThis   is a test."
     result = clean_text(text)

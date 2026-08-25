@@ -60,6 +60,9 @@
                 <button class="tab-btn" data-tab="knowledge-sources">
                     <i class="fa-solid fa-folder-closed"></i> Armory Documents
                 </button>
+                <button class="tab-btn" data-tab="rag-evaluation">
+                    <i class="fa-solid fa-chart-bar"></i> Evaluation
+                </button>
                 <div class="tab-slider"></div>
             </div>
 
@@ -106,6 +109,39 @@
                         <ul class="sources-list" id="sources-list">
                             <!-- Ingested sources loaded dynamically -->
                         </ul>
+                    </div>
+                </div>
+
+                <!-- Evaluation Tab -->
+                <div class="tab-content" id="tab-rag-evaluation">
+                    <div class="evaluation-section" style="padding: 15px;">
+                        <h4><i class="fa-solid fa-flask"></i> Model Evaluation</h4>
+                        <p style="font-size: 0.85rem; color: var(--color-text-dim); margin-top: 5px; margin-bottom: 15px;">Run an assessment of RAG pipeline safety, faithfulness, and relevancy.</p>
+                        <button id="btn-run-eval" class="btn btn-primary btn-block glow-on-hover">
+                            <i class="fa-solid fa-play"></i> Start Assessment
+                        </button>
+                        <div id="eval-results" style="display: none; margin-top: 20px;">
+                            <div class="telemetry-grid">
+                                <div class="telemetry-card">
+                                    <div class="telemetry-card-body" style="padding: 15px;">
+                                        <span class="telemetry-node-title">Safety Block Rate</span>
+                                        <span class="status-label" id="eval-safety" style="font-size: 1.2rem; color: var(--color-accent);">--%</span>
+                                    </div>
+                                </div>
+                                <div class="telemetry-card">
+                                    <div class="telemetry-card-body" style="padding: 15px;">
+                                        <span class="telemetry-node-title">Avg Faithfulness</span>
+                                        <span class="status-label" id="eval-faith" style="font-size: 1.2rem; color: var(--color-accent);">--/5.0</span>
+                                    </div>
+                                </div>
+                                <div class="telemetry-card">
+                                    <div class="telemetry-card-body" style="padding: 15px;">
+                                        <span class="telemetry-node-title">Avg Relevancy</span>
+                                        <span class="status-label" id="eval-rel" style="font-size: 1.2rem; color: var(--color-accent);">--/5.0</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -366,7 +402,7 @@
     <!-- Toast Notifications Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <script src="script.js"></script>
+    <script src="script.js?v=2"></script>
 </body>
 </html>
 

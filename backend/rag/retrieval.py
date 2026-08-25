@@ -1,19 +1,22 @@
 import math
 from typing import Any, Sequence
 from backend.rag.ingestion import get_kb_collection
-
+#Take the user's question and find the most relevant chunks 
+#from your stored knowledge base
 
 def retrieve_context(query: str, top_k: int = 4, min_similarity: float = 0.5) -> list[dict]:
     """
     Computes vector similarity against stored document chunks and returns top_k matches.
     Only returns chunks with similarity above min_similarity.
     """
+    #Get the ChromaDB collection
     collection = get_kb_collection()
     
     if collection.count() == 0:
         return []
 
     # Chroma uses L2 distance by default.
+    #Find the chunks that are most similar to this user's question
     res = collection.query(
         query_texts=[query],
         n_results=top_k,
@@ -26,11 +29,14 @@ def retrieve_context(query: str, top_k: int = 4, min_similarity: float = 0.5) ->
         return []
         
     for i in range(len(res["documents"][0])):
+        #Get the distance
         dist_val = res["distances"][0][i] if res.get("distances") else 0.0
         
-        # Pseudo similarity map from L2 distance
+        #Pseudo similarity map from L2 distance
+        #similarity calculation
         sim_val = 1.0 / (1.0 + dist_val)
-        
+
+
         if sim_val >= min_similarity:
             doc = res["documents"][0][i]
             meta = res["metadatas"][0][i] if res.get("metadatas") else {}
@@ -41,7 +47,7 @@ def retrieve_context(query: str, top_k: int = 4, min_similarity: float = 0.5) ->
                     clean_meta[k] = v
                 else:
                     clean_meta[k] = str(v)
-            
+            #Build the result
             scored_items.append({
                 "content": doc,
                 "metadata": clean_meta,

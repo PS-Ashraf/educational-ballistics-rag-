@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
-
+#gundekya of backend application 
 # Ensure project root is in sys.path
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if PROJECT_ROOT not in sys.path:
@@ -27,7 +27,7 @@ from backend.rag.ingestion import (
 from backend.rag.retrieval import retrieve_context
 
 from contextlib import asynccontextmanager
-
+# first starts up
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Auto-scan and auto-ingest documents in knowledge_base on server startup."""
@@ -49,7 +49,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Educational Ballistics Knowledge Chatbot API", lifespan=lifespan)
-
+#accept requests from any web browser
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -58,9 +58,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+#Chat history
 # In-memory history cache
 history_db: List[Dict[str, str]] = []
+
+from typing import List, Dict, Any, Optional
 
 class ChatRequest(BaseModel):
     message: str
@@ -71,7 +73,8 @@ class ChatResponse(BaseModel):
     safe: bool
     context: List[Dict[str, Any]]
     sources: List[str]
-
+    evaluation: Optional[Dict[str, Any]] = None
+#check whether your application is working.
 @app.get("/api/health")
 def health_check():
     health: Dict[str, Any] = {
@@ -101,6 +104,7 @@ def health_check():
         
     return health
 
+#Main RAG pipeline
 @app.post("/api/chat", response_model=ChatResponse)
 def chat_endpoint(payload: ChatRequest):
     user_msg = payload.message.strip()
@@ -124,7 +128,7 @@ def chat_endpoint(payload: ChatRequest):
             context=[],
             sources=[]
         )
-
+#Combine the retrieved chunks
     context_text = "\n\n".join([f"Source: {chunk['metadata'].get('source')}\nContent: {chunk['content']}" for chunk in context_chunks])
     sources = list(set([chunk["metadata"].get("source") for chunk in context_chunks if chunk.get("metadata")]))
     
@@ -149,7 +153,7 @@ def chat_endpoint(payload: ChatRequest):
                 "messages": messages,
                 "stream": False,
                 "options": {
-                    "temperature": 0.3,
+                    "temperature": 0.3,#controls randomness 
                     "top_p": 0.9,
                     "top_k": 40
                 }
@@ -158,16 +162,23 @@ def chat_endpoint(payload: ChatRequest):
         )
         if res.status_code == 200:
             bot_reply = res.json()["message"]["content"]
-            # Save turns to memory
+            # Save conversation history
             history_db.append({"role": "user", "content": user_msg})
             history_db.append({"role": "assistant", "content": bot_reply})
             
+            # Evaluate the response dynamically
+            from backend.evaluate_rag import llm_judge
+            evaluation_scores = llm_judge(user_msg, bot_reply, context_text)
+
+            #Return the final answer
             return ChatResponse(
                 response=bot_reply,
                 safe=True,
                 context=context_chunks,
-                sources=sources
+                sources=sources,
+                evaluation=evaluation_scores
             )
+            #fall back 
         else:
             fallback_msg = (
                 f"**Ollama Response Notice (HTTP {res.status_code})**\n\n"
@@ -193,7 +204,7 @@ def chat_endpoint(payload: ChatRequest):
             sources=sources
         )
 
-
+#Document upload
 @app.post("/api/documents/upload")
 def upload_document(file: UploadFile = File(...)):
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
@@ -219,7 +230,7 @@ def upload_document(file: UploadFile = File(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload and ingest document: {str(e)}")
-
+#Manually trigger the indexing of documents.
 @app.post("/api/documents/ingest")
 def ingest_document_endpoint(filename: str = Form(...)):
     file_path = os.path.join(settings.UPLOAD_DIR, filename)
@@ -230,7 +241,7 @@ def ingest_document_endpoint(filename: str = Form(...)):
     if result["status"] == "error":
         raise HTTPException(status_code=400, detail=result["message"])
     return result
-
+#Scan the knowledge base and index anything missing
 @app.post("/api/documents/sync")
 def sync_documents_endpoint():
     res = sync_knowledge_base()
@@ -240,29 +251,43 @@ def sync_documents_endpoint():
 def get_documents():
     return list_documents()
 
-
+#frontend to see what documents are currently in the database and
+#  read the specific text "chunks" they were broken into.
 @app.get("/api/documents/{filename}/preview")
 def preview_document(filename: str):
     chunks = get_document_chunks(filename)
     if not chunks:
         raise HTTPException(status_code=404, detail="Document chunks not found")
     return {"filename": filename, "chunks": chunks, "total_chunks": len(chunks)}
-
+#Delete document
 @app.delete("/api/documents/{filename}")
 def remove_document(filename: str):
     res = delete_document(filename)
     return res
-
+#Clear chat history
 @app.delete("/api/chat/history")
 def clear_history():
     global history_db
     history_db = []
     return {"status": "success", "message": "Conversation history cleared"}
 
+# Evaluate RAG metrics
+@app.get("/api/evaluate")
+def evaluate_rag_endpoint():
+    try:
+        from backend.evaluate_rag import run_evaluation
+        report = run_evaluation()
+        if not report:
+            raise HTTPException(status_code=500, detail="Evaluation failed.")
+        return report
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Serve Frontend static UI files
 frontend_dir = os.path.abspath(os.path.join(PROJECT_ROOT, "frontend"))
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
-
+#starts the web server on the port
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host=settings.API_HOST, port=settings.API_PORT, reload=True)

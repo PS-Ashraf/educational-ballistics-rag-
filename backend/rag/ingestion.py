@@ -19,7 +19,7 @@ def get_kb_collection():
         name="ballistics_knowledge_base",
         embedding_function=get_embedding_function()
     )
-
+#PDF text extraction
 def extract_text_from_pdf(file_path: str) -> str:
     text = ""
     try:
@@ -36,17 +36,17 @@ def extract_text_from_pdf(file_path: str) -> str:
         print(f"[PDF Extract Notice] Error reading {file_path}: {e}")
     return text
 
-
+#TXT file extraction
 def extract_text_from_txt(file_path: str) -> str:
     with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
         return f.read()
-
+#cleaning text
 def clean_text(text: str) -> str:
     # Normalize multiple newlines and trim horizontal whitespace
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n", "\n\n", text)
     return text.strip()
-
+#chunking function
 def chunk_text(text: str, chunk_size: int = 350, chunk_overlap: int = 50) -> list[str]:
     """
     High-precision sentence/line level chunking for exact RAG matching.
@@ -63,7 +63,7 @@ def chunk_text(text: str, chunk_size: int = 350, chunk_overlap: int = 50) -> lis
             s_clean = s.strip()
             if s_clean:
                 lines_or_sentences.append(s_clean)
-
+#Creating chunks
     chunks = []
     current_chunk = []
     current_len = 0
@@ -94,7 +94,9 @@ def chunk_text(text: str, chunk_size: int = 350, chunk_overlap: int = 50) -> lis
         chunks.append(" ".join(current_chunk))
 
     return chunks
-
+#The project uses a custom paragraph-aware, sentence-level chunking algorithm. 
+#It first separates the text into paragraphs,
+#then splits paragraphs into sentences using punctuation.
 
 
 def ingest_document(file_path: str) -> dict:
@@ -129,10 +131,10 @@ def ingest_document(file_path: str) -> dict:
 
     # Ensure embedding is a list of plain python floats
     float_embs = [[float(x) for x in emb] for emb in embeddings]
-    
+    #Create unique IDs
     ids = [f"{filename}_{idx}" for idx in range(len(chunks))]
     metadatas = [{"source": filename, "chunk_index": idx, "path": file_path} for idx in range(len(chunks))]
-
+#Store everything in ChromaDB
     collection.add(
         ids=ids,
         documents=chunks,
@@ -210,7 +212,7 @@ def sync_knowledge_base(target_dir: str | None = None, force_reingest: bool = Fa
         "errors": errors
     }
 
-
+#show which documents currently exist in the vector database.
 def list_documents() -> list[dict]:
     collection = get_kb_collection()
     res = collection.get(include=["metadatas"])

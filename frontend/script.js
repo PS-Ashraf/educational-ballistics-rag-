@@ -76,6 +76,11 @@ window.addEventListener('DOMContentLoaded', () => {
     btnClearHistory.addEventListener('click', clearChatHistory);
     btnThemeToggle.addEventListener('click', toggleTheme);
 
+    const btnRunEval = document.getElementById('btn-run-eval');
+    if (btnRunEval) {
+        btnRunEval.addEventListener('click', runEvaluation);
+    }
+
     // Upload listeners
     uploadZone.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', handleFileUpload);
@@ -544,6 +549,35 @@ function filterSourcesList() {
     });
 }
 
+async function runEvaluation() {
+    const btn = document.getElementById('btn-run-eval');
+    const resultsDiv = document.getElementById('eval-results');
+    const safetyEl = document.getElementById('eval-safety');
+    const faithEl = document.getElementById('eval-faith');
+    const relEl = document.getElementById('eval-rel');
+
+    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Running...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch(`${API_BASE}/evaluate`);
+        if (!res.ok) throw new Error('Evaluation failed');
+        const data = await res.json();
+
+        safetyEl.textContent = `${data.safety_blocking_rate}%`;
+        faithEl.textContent = `${data.average_faithfulness}/5.0`;
+        relEl.textContent = `${data.average_relevancy}/5.0`;
+
+        resultsDiv.style.display = 'block';
+        showToast('Evaluation completed successfully', 'fa-check');
+    } catch (e) {
+        showToast(e.message, 'fa-triangle-exclamation');
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> Start Assessment';
+        btn.disabled = false;
+    }
+}
+
 // -------------------------------------------------------------
 // Chat flow
 // -------------------------------------------------------------
@@ -648,7 +682,7 @@ async function handleSendMessage() {
         const data = await res.json();
         
         // Append Assistant Message
-        appendMessage('assistant', data.response, data.sources, data.context);
+        appendMessage('assistant', data.response, data.sources, data.context, data.evaluation);
         
         // Update history sidebar list
         updateHistoryList(messageText);
@@ -660,7 +694,7 @@ async function handleSendMessage() {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
-function appendMessage(sender, text, sources = [], context = []) {
+function appendMessage(sender, text, sources = [], context = [], evaluation = null) {
     const welcome = chatMessages.querySelector('.welcome-card');
     if (welcome) welcome.remove();
 
@@ -694,15 +728,39 @@ function appendMessage(sender, text, sources = [], context = []) {
             wrapper.appendChild(copyBtn);
         });
 
-        // Render Source Cards
+        // Render Source Cards and Evaluation
         if (sources && sources.length > 0) {
             const sourcesPanel = document.createElement('div');
             sourcesPanel.className = 'sources-panel';
+            
+            let evalHtml = '';
+            if (evaluation) {
+                const f = evaluation.faithfulness ?? evaluation.Faithfulness ?? 'N/A';
+                const r = evaluation.relevancy ?? evaluation.Relevancy ?? 'N/A';
+                const reason = evaluation.reasoning ?? evaluation.Reasoning ?? '';
+
+                evalHtml = `
+                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-color);">
+                        <div style="font-size: 0.85rem; color: var(--color-accent); font-weight: bold; margin-bottom: 5px;">
+                            <i class="fa-solid fa-flask"></i> Auto-Evaluation
+                        </div>
+                        <div style="display: flex; gap: 15px; font-size: 0.85rem;">
+                            <div><strong>Faithfulness:</strong> ${f}/5</div>
+                            <div><strong>Relevancy:</strong> ${r}/5</div>
+                        </div>
+                        <div style="font-size: 0.8rem; color: var(--color-text-dim); margin-top: 5px;">
+                            <em>${reason}</em>
+                        </div>
+                    </div>
+                `;
+            }
+
             sourcesPanel.innerHTML = `
-                <div class="sources-title"><i class="fa-solid fa-book-open"></i> Grounding Sources</div>
+                <div class="sources-title"><i class="fa-solid fa-book-open"></i> Grounding Sources & Evaluation</div>
                 <div class="sources-cards-grid">
                     ${sources.map(src => `<span class="source-card"><i class="fa-solid fa-file-pdf"></i> ${src}</span>`).join('')}
                 </div>
+                ${evalHtml}
             `;
             bubble.appendChild(sourcesPanel);
         }

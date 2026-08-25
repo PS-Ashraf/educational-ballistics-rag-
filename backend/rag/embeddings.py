@@ -11,3 +11,5 @@ def get_embedding_function() -> EmbeddingFunction:
         _embedding_fn = embedding_functions.DefaultEmbeddingFunction()
     return _embedding_fn
 
+#This default function uses a smaller, lightweight model (all-MiniLM-L6-v2) 
+# that runs perfectly on Windows without those nasty dependency crashes.
